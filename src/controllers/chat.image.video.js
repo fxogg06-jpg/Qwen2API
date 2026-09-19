@@ -1328,6 +1328,12 @@ const generateImageVideoResult = async (payload) => {
         const chatBaseUrl = getChatBaseUrl()
         // Antidetect: per-account fingerprint headers replace static block
         const ssxmod = getSsxmodForAccount(account)
+        // The Accept header depends on whether the upstream call streams, so the
+        // flag has to be resolved before the headers are built. Declaring it after
+        // this block put it in the temporal dead zone and threw
+        // "Cannot access 'upstreamStream' before initialization" on every call.
+        const newChatType = reqBody.messages[0]?.chat_type
+        const upstreamStream = newChatType === 't2i' || newChatType === 'image_edit'
         const headers = buildRequestHeaders(account, {
             chatBaseUrl,
             token,
@@ -1344,8 +1350,6 @@ const generateImageVideoResult = async (payload) => {
         logger.info(`选择图片: ${selectedImageList[selectedImageList.length - 1] || '未选择图片，切换生成图/视频模式'}`, 'CHAT')
         logger.info(`使用提示: ${reqBody.messages[0].content}`, 'CHAT')
 
-        const newChatType = reqBody.messages[0].chat_type
-        const upstreamStream = newChatType === 't2i' || newChatType === 'image_edit'
         reqBody.stream = upstreamStream
 
         logger.info(`图片视频流策略: upstream=${upstreamStream} downstream=${payload.stream === true}`, 'CHAT')
